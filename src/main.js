@@ -134,10 +134,10 @@ setInterval(() => {
   } else if (galleryView && galleryView.style.display !== 'none' && currentFolderId) {
     openGallery(currentFolderId, galleryTitle.innerText, true);
   }
-}, 3000); // ปรับเป็น 3 วินาทีเพื่อไม่ให้บราวเซอร์ทำงานหนักเกินไป
+}, 3000);
 
 // =========================================
-// 📸 ระบบแกลลอรี่ & ดูรูป & ดาวน์โหลด (Base64 แบบเสถียร)
+// 📸 ระบบแกลลอรี่ & ดูรูป & ดาวน์โหลด
 // =========================================
 async function openGallery(folderId, folderName, isSilentRefresh = false) {
   if (!isSilentRefresh && dashboardView && galleryView) {
@@ -180,7 +180,6 @@ async function openGallery(folderId, folderName, isSilentRefresh = false) {
 
         photoGrid.appendChild(wrapper);
 
-        // ดึงภาพผ่าน Base64 ป้องกันภาพแตก/ภาพไม่ขึ้นจากปัญหาข้ามโดเมน
         fetch(`${GOOGLE_SCRIPT_URL}?action=download&id=${img.id}`)
           .then(res => res.json())
           .then(imgData => {
@@ -261,7 +260,6 @@ function clearSelection() {
 }
 if(btnCancelSelect) btnCancelSelect.addEventListener('click', () => clearSelection());
 
-// ระบบดาวน์โหลดแบบกลุ่ม
 if(btnDownloadBatch) {
   btnDownloadBatch.addEventListener('click', async () => {
     if (selectedPhotos.size === 0) return;
@@ -436,13 +434,9 @@ if(btnCapture) {
   });
 }
 
-// ผูกปุ่มสแกนหน้า
 const btnScanFace = document.getElementById('btnScanFace');
 if(btnScanFace) btnScanFace.addEventListener('click', startCamera);
 
-// =========================================
-// ฟังก์ชันพื้นฐานอื่นๆ
-// =========================================
 if(btnBack) {
   btnBack.addEventListener('click', () => {
     if(galleryView && dashboardView) {
@@ -508,7 +502,10 @@ if(confirmDeleteBtn) {
   });
 }
 
-// เพิ่มสไตล์แอนิเมชันวงกลมหมุนโหลดรูป
-const style = document.createElement('style');
-style.textContent = '@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } } .shake { animation: shake 0.3s; } @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }';
-document.head.appendChild(style);
+// เติมส่วนสไตล์แอนิเมชันตอนโหลดที่ขาดหายไปให้สมบูรณ์
+const styleEl = document.createElement('style');
+styleEl.textContent = `
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  .removing { opacity: 0; transform: scale(0.8); transition: all 0.4s ease; }
+`;
+document.head.appendChild(styleEl);

@@ -25,37 +25,39 @@ let selectedPhotos = new Set();
 let stream = null; 
 
 // =========================================
-// 🎯 ดึงองค์ประกอบหน้าจอ
+// 🎯 ดึงองค์ประกอบหน้าจอ (พร้อมระบบป้องกันโค้ดพัง)
 // =========================================
-const dashboardView = document.getElementById('dashboard-view');
-const galleryView = document.getElementById('gallery-view');
-const photoGrid = document.getElementById('photo-grid');
-const galleryTitle = document.getElementById('gallery-title');
-const btnBack = document.getElementById('btnBack');
+const getEl = (id) => document.getElementById(id) || document.createElement('div');
 
-const eventNameInput = document.getElementById('eventName');
-const createBtn = document.getElementById('createBtn');
-const folderContainer = document.getElementById('folder-container');
+const dashboardView = getEl('dashboard-view');
+const galleryView = getEl('gallery-view');
+const photoGrid = getEl('photo-grid');
+const galleryTitle = getEl('gallery-title');
+const btnBack = getEl('btnBack');
 
-const downloadBar = document.getElementById('download-bar');
-const selectedCountText = document.getElementById('selected-count');
-const btnDownloadBatch = document.getElementById('btnDownloadBatch');
-const btnCancelSelect = document.getElementById('btnCancelSelect');
-const lightbox = document.getElementById('lightbox');
-const lightboxImg = document.getElementById('lightbox-img');
-const lightboxDownload = document.getElementById('lightbox-download');
-const btnCloseLightbox = document.getElementById('btnCloseLightbox');
+const eventNameInput = getEl('eventName');
+const createBtn = getEl('createBtn');
+const folderContainer = getEl('folder-container');
 
-const modal = document.getElementById('custom-modal');
-const modalMessage = document.getElementById('modal-message');
-const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
-const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+const downloadBar = getEl('download-bar');
+const selectedCountText = getEl('selected-count');
+const btnDownloadBatch = getEl('btnDownloadBatch');
+const btnCancelSelect = getEl('btnCancelSelect');
+const lightbox = getEl('lightbox');
+const lightboxImg = getEl('lightbox-img');
+const lightboxDownload = getEl('lightbox-download');
+const btnCloseLightbox = getEl('btnCloseLightbox');
+
+const modal = getEl('custom-modal');
+const modalMessage = getEl('modal-message');
+const confirmDeleteBtn = getEl('confirmDeleteBtn');
+const cancelDeleteBtn = getEl('cancelDeleteBtn');
 
 // 🤖 องค์ประกอบสำหรับระบบกล้อง
-const cameraModal = document.getElementById('camera-modal');
-const videoPreview = document.getElementById('video-preview');
-const btnCapture = document.getElementById('btnCapture');
-const captureCanvas = document.getElementById('capture-canvas');
+const cameraModal = getEl('camera-modal');
+const videoPreview = getEl('video-preview');
+const btnCapture = getEl('btnCapture');
+const captureCanvas = getEl('capture-canvas');
 
 // ⭐️ URL ของคุณ
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyx02q_MQk93iTVNPKtNhulyCk-2OOAfLWu_oMhsd52Ate71V2Q7QGX2GtQxyolEpgb/exec";
@@ -73,12 +75,21 @@ function createFolderCard(folder) {
     <p class="folder-date">สร้างเมื่อ: ${folder.date}</p>
     <button class="btn-open">เปิดโฟลเดอร์</button>
   `;
-  card.querySelector('.delete-btn').addEventListener('click', () => {
-    folderToDeleteId = folder.id; folderToDeleteElement = card; 
-    modalMessage.innerHTML = `ต้องการลบโฟลเดอร์ <br><b>"${folder.name}"</b> หรือไม่?`;
-    modal.classList.add('show');
-  });
-  card.querySelector('.btn-open').addEventListener('click', () => openGallery(folder.id, folder.name));
+  
+  const deleteBtn = card.querySelector('.delete-btn');
+  if(deleteBtn) {
+    deleteBtn.addEventListener('click', () => {
+      folderToDeleteId = folder.id; 
+      folderToDeleteElement = card; 
+      modalMessage.innerHTML = `ต้องการลบโฟลเดอร์ <br><b>"${folder.name}"</b> หรือไม่?`;
+      modal.classList.add('show');
+    });
+  }
+  
+  const openBtn = card.querySelector('.btn-open');
+  if(openBtn) {
+    openBtn.addEventListener('click', () => openGallery(folder.id, folder.name));
+  }
   return card;
 }
 
@@ -86,7 +97,7 @@ function createFolderCard(folder) {
 // 🔄 ระบบดึงข้อมูลตอนเปิดเว็บ + Real-time
 // =========================================
 async function loadFoldersFromDrive(isInitialLoad = false) {
-  if (isInitialLoad) {
+  if (isInitialLoad && folderContainer) {
     folderContainer.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #6B7280; padding: 40px; font-size: 18px;">⏳ กำลังเชื่อมต่อกับ Google Drive...</div>';
   }
   
@@ -94,7 +105,7 @@ async function loadFoldersFromDrive(isInitialLoad = false) {
     const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getFolders`);
     const data = await response.json();
     
-    if (data.status === "success") {
+    if (data.status === "success" && folderContainer) {
       const fetchedFolders = data.folders.sort((a, b) => b.dateCreated - a.dateCreated); 
       let shouldUpdateUI = isInitialLoad || (folders.length !== fetchedFolders.length) || (folders.length > 0 && fetchedFolders.length > 0 && folders[0].id !== fetchedFolders[0].id);
       
@@ -113,27 +124,29 @@ async function loadFoldersFromDrive(isInitialLoad = false) {
   }
 }
 
+// เรียกใช้งานครั้งแรกทันทีเมื่อโหลดสคริปต์
 loadFoldersFromDrive(true);
 
+// ตั้งเวลาอัปเดตแบบ Real-time
 setInterval(() => {
-  if (dashboardView.style.display !== 'none') {
+  if (dashboardView && dashboardView.style.display !== 'none') {
     loadFoldersFromDrive(false);
-  } else if (galleryView.style.display !== 'none' && currentFolderId) {
+  } else if (galleryView && galleryView.style.display !== 'none' && currentFolderId) {
     openGallery(currentFolderId, galleryTitle.innerText, true);
   }
-}, 1500); 
+}, 3000); // ปรับเป็น 3 วินาทีเพื่อไม่ให้บราวเซอร์ทำงานหนักเกินไป
 
 // =========================================
-// 📸 ระบบแกลลอรี่ & ดูรูป & ดาวน์โหลด (แก้ไขดึงแบบ Base64 แก้ภาพแตกชัวร์ 100%)
+// 📸 ระบบแกลลอรี่ & ดูรูป & ดาวน์โหลด (Base64 แบบเสถียร)
 // =========================================
 async function openGallery(folderId, folderName, isSilentRefresh = false) {
-  if (!isSilentRefresh) {
+  if (!isSilentRefresh && dashboardView && galleryView) {
     dashboardView.style.display = 'none'; 
     galleryView.style.display = 'block';
-    galleryTitle.innerText = folderName; 
+    if(galleryTitle) galleryTitle.innerText = folderName; 
     currentFolderId = folderId; 
     currentImagesCount = 0;
-    photoGrid.innerHTML = '<div class="loading-text">⏳ กำลังโหลดรูปภาพ (อาจใช้เวลาสักครู่)...</div>';
+    if(photoGrid) photoGrid.innerHTML = '<div class="loading-text">⏳ กำลังโหลดรูปภาพ (อาจใช้เวลาสักครู่)...</div>';
     clearSelection(); 
   }
 
@@ -141,7 +154,7 @@ async function openGallery(folderId, folderName, isSilentRefresh = false) {
     const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getImages&id=${folderId}`);
     const data = await response.json();
 
-    if (data.status === "success") {
+    if (data.status === "success" && photoGrid) {
       if (isSilentRefresh && data.images.length === currentImagesCount) return; 
       
       currentImagesCount = data.images.length; 
@@ -159,7 +172,6 @@ async function openGallery(folderId, folderName, isSilentRefresh = false) {
         wrapper.className = 'photo-wrapper' + (selectedPhotos.has(img.id) ? ' selected' : '');
         wrapper.id = `img-wrapper-${index}`; 
 
-        // ตั้งหน้าปกไว้เป็นข้อความกำลังโหลด เพื่อลดภาระหน้าเว็บ
         wrapper.innerHTML = `
           <div class="img-loader" id="loader-${img.id}" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); font-size:12px; color:#888;">⏳ โหลดรูป...</div>
           <img id="img-${img.id}" loading="lazy" data-id="${img.id}" style="width: 100%; height: 100%; object-fit: cover; display:none;">
@@ -168,7 +180,7 @@ async function openGallery(folderId, folderName, isSilentRefresh = false) {
 
         photoGrid.appendChild(wrapper);
 
-        // 🔥 ดึงภาพผ่านสิทธิ์ปลอดภัยข้ามโดเมน (Base64)
+        // ดึงภาพผ่าน Base64 ป้องกันภาพแตก/ภาพไม่ขึ้นจากปัญหาข้ามโดเมน
         fetch(`${GOOGLE_SCRIPT_URL}?action=download&id=${img.id}`)
           .then(res => res.json())
           .then(imgData => {
@@ -176,7 +188,6 @@ async function openGallery(folderId, folderName, isSilentRefresh = false) {
               const imageElement = document.getElementById(`img-${img.id}`);
               const loaderElement = document.getElementById(`loader-${img.id}`);
               
-              // ถอดรหัส Base64 กลับเป็น Object URL สำหรับแสดงผล
               const byteCharacters = atob(imgData.data);
               const byteNumbers = new Array(byteCharacters.length);
               for (let i = 0; i < byteCharacters.length; i++) {
@@ -191,7 +202,6 @@ async function openGallery(folderId, folderName, isSilentRefresh = false) {
                 imageElement.style.display = 'block';
                 if (loaderElement) loaderElement.remove();
 
-                // ผูกเหตุการณ์คลิกรูปภาพเพื่อเลือกรูป หรือเปิดดูรูปขยายใหญ่
                 wrapper.addEventListener('click', (e) => {
                   if (selectedPhotos.size > 0 || e.target.closest('.check-circle')) {
                     toggleSelectPhoto(wrapper, img.id);
@@ -204,7 +214,7 @@ async function openGallery(folderId, folderName, isSilentRefresh = false) {
             }
           })
           .catch(err => {
-            console.error("โหลดรูปภาพย่อยไม่สำเร็จ:", err);
+            console.error("โหลดรูปย่อยไม่สำเร็จ:", err);
             const loaderElement = document.getElementById(`loader-${img.id}`);
             if (loaderElement) loaderElement.innerText = "❌ รูปโหลดไม่สำเร็จ";
           });
@@ -216,11 +226,13 @@ async function openGallery(folderId, folderName, isSilentRefresh = false) {
 }
 
 function openLightbox(imgSrc, downloadUrl) {
-  lightboxImg.src = imgSrc;
-  lightboxDownload.href = downloadUrl; 
-  lightbox.classList.add('show');
+  if (lightboxImg && lightboxDownload && lightbox) {
+    lightboxImg.src = imgSrc;
+    lightboxDownload.href = downloadUrl; 
+    lightbox.classList.add('show');
+  }
 }
-btnCloseLightbox.addEventListener('click', () => lightbox.classList.remove('show'));
+if(btnCloseLightbox) btnCloseLightbox.addEventListener('click', () => lightbox.classList.remove('show'));
 
 function toggleSelectPhoto(wrapperElement, photoId) {
   if (selectedPhotos.has(photoId)) {
@@ -234,10 +246,10 @@ function toggleSelectPhoto(wrapperElement, photoId) {
 }
 
 function updateDownloadBar() {
-  if (selectedPhotos.size > 0) {
+  if (selectedPhotos.size > 0 && downloadBar && selectedCountText) {
     selectedCountText.innerText = `เลือกแล้ว ${selectedPhotos.size} รูป`;
     downloadBar.classList.add('show');
-  } else {
+  } else if (downloadBar) {
     downloadBar.classList.remove('show');
   }
 }
@@ -247,39 +259,39 @@ function clearSelection() {
   updateDownloadBar();
   document.querySelectorAll('.photo-wrapper').forEach(w => w.classList.remove('selected'));
 }
-btnCancelSelect.addEventListener('click', clearSelection);
+if(btnCancelSelect) btnCancelSelect.addEventListener('click', () => clearSelection());
 
-// 🚀 ระบบดาวน์โหลดหลายรูป
-btnDownloadBatch.addEventListener('click', async () => {
-  if (selectedPhotos.size === 0) return;
-  const confirmMsg = `กำลังจะดาวน์โหลด ${selectedPhotos.size} รูป\n\n⚠️ หากรูปไม่ครบ โปรดกด "อนุญาต (Allow)" การดาวน์โหลดหลายไฟล์ครับ`;
-  if (!confirm(confirmMsg)) return;
+// ระบบดาวน์โหลดแบบกลุ่ม
+if(btnDownloadBatch) {
+  btnDownloadBatch.addEventListener('click', async () => {
+    if (selectedPhotos.size === 0) return;
+    if (!confirm(`กำลังจะดาวน์โหลด ${selectedPhotos.size} รูป\n\n⚠️ โปรดกด "อนุญาต (Allow)" หากบราวเซอร์ถามเรื่องโหลดหลายไฟล์`)) return;
 
-  const originalText = btnDownloadBatch.innerText;
-  btnDownloadBatch.innerText = "⏳ ทยอยบันทึก...";
-  btnDownloadBatch.disabled = true;
+    const originalText = btnDownloadBatch.innerText;
+    btnDownloadBatch.innerText = "⏳ ทยอยบันทึก...";
+    btnDownloadBatch.disabled = true;
 
-  const photosArray = Array.from(selectedPhotos);
-  for (let i = 0; i < photosArray.length; i++) {
-    const photoId = photosArray[i];
-    const link = document.createElement('a');
-    link.href = `https://drive.google.com/uc?export=download&id=${photoId}`;
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-  }
+    const photosArray = Array.from(selectedPhotos);
+    for (let i = 0; i < photosArray.length; i++) {
+      const photoId = photosArray[i];
+      const link = document.createElement('a');
+      link.href = `https://drive.google.com/uc?export=download&id=${photoId}`;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    }
 
-  btnDownloadBatch.innerText = originalText;
-  btnDownloadBatch.disabled = false;
-  clearSelection();
-});
+    btnDownloadBatch.innerText = originalText;
+    btnDownloadBatch.disabled = false;
+    clearSelection();
+  });
+}
 
 // =========================================
-// 📸 ระบบ UI แจ้งเตือน และ AI สแกนใบหน้า (ดีไซน์ใหม่)
+// 📸 ระบบ UI แจ้งเตือน และ AI สแกนใบหน้า
 // =========================================
-
 function showStatusOverlay(title, description, showSpinner = true) {
   let overlay = document.getElementById('ai-status-overlay');
   if (!overlay) {
@@ -288,7 +300,7 @@ function showStatusOverlay(title, description, showSpinner = true) {
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.9);z-index:9999;display:flex;align-items:center;justify-content:center;font-family:"Prompt",sans-serif;padding:20px;';
     overlay.innerHTML = `
       <div style="background:white;padding:35px 25px;border-radius:24px;width:100%;max-width:360px;text-align:center;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1);">
-        <div id="ai-spinner" class="ai-spinner" style="width:45px;height:45px;border:4px solid #F3F4F6;border-top:4px solid #4F46E5;border-radius:50%;margin:0 auto 20px auto;animation:spin 1s linear infinite;"></div>
+        <div id="ai-spinner" style="width:45px;height:45px;border:4px solid #F3F4F6;border-top:4px solid #4F46E5;border-radius:50%;margin:0 auto 20px auto;animation:spin 1s linear infinite;"></div>
         <h3 id="ai-overlay-title" style="margin:0 0 10px 0;font-size:20px;font-weight:600;color:#1F2937;"></h3>
         <p id="ai-overlay-desc" style="margin:0;font-size:14px;color:#6B7280;line-height:1.6;white-space:pre-line;"></p>
         <button id="ai-overlay-btn" style="display:none;margin-top:20px;width:100%;padding:12px;background:#4F46E5;color:white;border:none;border-radius:12px;font-family:'Prompt';font-weight:500;cursor:pointer;">ตกลง</button>
@@ -309,168 +321,194 @@ function hideStatusOverlay() {
   if (overlay) overlay.style.display = 'none';
 }
 
-// 1. ฟังก์ชันเปิดกล้อง (ตั้งค่าป้องกันปัญหากล้องซูมเกินไป)
 async function startCamera() {
   try {
     stream = await navigator.mediaDevices.getUserMedia({ 
       video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } } 
     });
-    videoPreview.srcObject = stream;
-    cameraModal.style.display = 'flex';
+    if(videoPreview) videoPreview.srcObject = stream;
+    if(cameraModal) cameraModal.style.display = 'flex';
   } catch (err) {
     showStatusOverlay("❌ เปิดกล้องไม่สำเร็จ", "กรุณาตรวจสอบสิทธิ์การเข้าถึงกล้องถ่ายภาพในอุปกรณ์ของคุณ", false);
   }
 }
 
-// 2. ฟังก์ชันปิดกล้อง
 function stopCamera() {
   if (stream) {
     stream.getTracks().forEach(track => track.stop());
-    cameraModal.style.display = 'none';
+    if(cameraModal) cameraModal.style.display = 'none';
   }
 }
 
-// 3. ฟังก์ชันถ่ายรูปและประมวลผลค้นหาใบหน้า
-btnCapture.addEventListener('click', async () => {
-  const context = captureCanvas.getContext('2d');
-  captureCanvas.width = videoPreview.videoWidth;
-  captureCanvas.height = videoPreview.videoHeight;
-  context.drawImage(videoPreview, 0, 0, captureCanvas.width, captureCanvas.height);
-  
-  stopCamera(); // ปิดกล้องทันที
+if(btnCapture) {
+  btnCapture.addEventListener('click', async () => {
+    const context = captureCanvas.getContext('2d');
+    if(!context || !videoPreview) return;
+    
+    captureCanvas.width = videoPreview.videoWidth;
+    captureCanvas.height = videoPreview.videoHeight;
+    context.drawImage(videoPreview, 0, 0, captureCanvas.width, captureCanvas.height);
+    
+    stopCamera();
+    showStatusOverlay("⏳ ถ่ายรูปสำเร็จ!", "กำลังวิเคราะห์และเตรียมสแกนหาใบหน้าของคุณในแกลลอรี่...");
 
-  showStatusOverlay("⏳ ถ่ายรูปสำเร็จ!", "กำลังวิเคราะห์และเตรียมสแกนหาใบหน้าของคุณในแกลลอรี่...");
+    try {
+      const userImgElement = new Image();
+      userImgElement.src = captureCanvas.toDataURL('image/jpeg');
+      await new Promise(r => userImgElement.onload = r);
 
-  try {
-    const userImgElement = new Image();
-    userImgElement.src = captureCanvas.toDataURL('image/jpeg');
-    await new Promise(r => userImgElement.onload = r);
+      const userDetection = await faceapi.detectSingleFace(userImgElement).withFaceLandmarks().withFaceDescriptor();
 
-    const userDetection = await faceapi.detectSingleFace(userImgElement)
-      .withFaceLandmarks()
-      .withFaceDescriptor();
-
-    if (!userDetection) {
-      showStatusOverlay("❌ ไม่พบใบหน้าของคุณ", "ระบบไม่สามารถตรวจจับโครงหน้าได้ชัดเจน กรุณากดลองใหม่อีกครั้งในที่สว่างๆ ครับ", false);
-      return;
-    }
-
-    const faceMatcher = new faceapi.FaceMatcher(userDetection.descriptor, 0.5);
-    const oldTitle = galleryTitle.innerText;
-    galleryTitle.innerText = "⏳ กำลังสแกนหาใบหน้าของคุณ...";
-
-    const allPhotos = document.querySelectorAll('.photo-wrapper');
-    let foundCount = 0;
-    const totalPhotos = allPhotos.length;
-
-    for (let i = 0; i < totalPhotos; i++) {
-      const wrapper = allPhotos[i];
-      const imgEl = wrapper.querySelector('img');
-      const driveId = imgEl.getAttribute('data-id'); 
-
-      showStatusOverlay("🤖 ระบบกำลังค้นหาใบหน้า", `กำลังประมวลผลรูปภาพข้ามโดเมนอย่างปลอดภัย\n[ กำลังตรวจรูปภาพที่ ${i + 1} จากทั้งหมด ${totalPhotos} รูป ]`);
-
-      try {
-        // ⚡️ นำไอดีรูปไปโหลดผ่าน Proxy กลาง เพื่อแปลงเป็นภาพที่ AI อ่านพิกเซลได้โดยไม่ติด CORS
-        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent('https://drive.google.com/uc?export=download&id=' + driveId)}`;
-        const aiImgElement = new Image();
-        aiImgElement.crossOrigin = 'anonymous';
-        aiImgElement.src = proxyUrl;
-        await new Promise((resolve, reject) => {
-          aiImgElement.onload = resolve;
-          aiImgElement.onerror = reject;
-        });
-
-        const detections = await faceapi.detectAllFaces(aiImgElement)
-          .withFaceLandmarks()
-          .withFaceDescriptors();
-
-        let isMatch = false;
-        for (let d of detections) {
-          const bestMatch = faceMatcher.findBestMatch(d.descriptor);
-          if (bestMatch.label !== 'unknown') { 
-            isMatch = true;
-            break;
-          }
-        }
-
-        if (isMatch) {
-          wrapper.style.display = 'block';
-          foundCount++;
-        } else {
-          wrapper.style.display = 'none';
-        }
-      } catch (loopError) {
-        console.error("ข้ามรูปภาพเนื่องจากติดสิทธิ์พิกเซล:", loopError);
-        wrapper.style.display = 'none'; 
+      if (!userDetection) {
+        showStatusOverlay("❌ ไม่พบใบหน้าของคุณ", "ระบบไม่สามารถตรวจจับโครงหน้าได้ชัดเจน กรุณากดลองใหม่อีกครั้งในที่สว่างๆ ครับ", false);
+        return;
       }
+
+      const faceMatcher = new faceapi.FaceMatcher(userDetection.descriptor, 0.5);
+      const oldTitle = galleryTitle ? galleryTitle.innerText : "แกลลอรี่";
+      if(galleryTitle) galleryTitle.innerText = "⏳ กำลังสแกนหาใบหน้าของคุณ...";
+
+      const allPhotos = document.querySelectorAll('.photo-wrapper');
+      let foundCount = 0;
+      const totalPhotos = allPhotos.length;
+
+      for (let i = 0; i < totalPhotos; i++) {
+        const wrapper = allPhotos[i];
+        const imgEl = wrapper.querySelector('img');
+        if(!imgEl) continue;
+        const driveId = imgEl.getAttribute('data-id'); 
+
+        showStatusOverlay("🤖 ระบบกำลังค้นหาใบหน้า", `กำลังประมวลผลรูปภาพ\n[ กำลังตรวจรูปภาพที่ ${i + 1} จากทั้งหมด ${totalPhotos} รูป ]`);
+
+        try {
+          const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent('https://drive.google.com/uc?export=download&id=' + driveId)}`;
+          const aiImgElement = new Image();
+          aiImgElement.crossOrigin = 'anonymous';
+          aiImgElement.src = proxyUrl;
+          await new Promise((resolve, reject) => {
+            aiImgElement.onload = resolve;
+            aiImgElement.onerror = reject;
+          });
+
+          const detections = await faceapi.detectAllFaces(aiImgElement).withFaceLandmarks().withFaceDescriptors();
+
+          let isMatch = false;
+          for (let d of detections) {
+            const bestMatch = faceMatcher.findBestMatch(d.descriptor);
+            if (bestMatch.label !== 'unknown') { 
+              isMatch = true;
+              break;
+            }
+          }
+
+          if (isMatch) {
+            wrapper.style.display = 'block';
+            foundCount++;
+          } else {
+            wrapper.style.display = 'none';
+          }
+        } catch (loopError) {
+          wrapper.style.display = 'none'; 
+        }
+      }
+
+      hideStatusOverlay();
+      if(galleryTitle) galleryTitle.innerText = `ค้นพบรูปของคุณทั้งหมด ${foundCount} รูป 🎉`;
+
+      const galleryHeader = document.querySelector('.gallery-header');
+      if (galleryHeader && !document.getElementById('btnClearScan')) {
+        const btnClearScan = document.createElement('button');
+        btnClearScan.id = 'btnClearScan';
+        btnClearScan.innerText = '↺ แสดงรูปทั้งหมด';
+        btnClearScan.style.cssText = 'padding:10px 20px;margin-left:10px;background:#F3F4F6;border:1px solid #D1D5DB;border-radius:12px;font-family:"Prompt";cursor:pointer;font-weight:500;';
+        btnClearScan.addEventListener('click', () => {
+          allPhotos.forEach(w => w.style.display = 'block');
+          if(galleryTitle) galleryTitle.innerText = oldTitle;
+          if(document.getElementById('btnClearScan')) galleryHeader.removeChild(btnClearScan);
+        });
+        galleryHeader.appendChild(btnClearScan);
+      }
+
+    } catch (error) {
+      console.error("AI Error:", error);
+      showStatusOverlay("❌ เกิดข้อผิดพลาด", "ระบบไม่สามารถประมวลผลข้อมูล AI ได้ในขณะนี้", false);
     }
+  });
+}
 
-    hideStatusOverlay();
-    galleryTitle.innerText = `ค้นพบรูปของคุณทั้งหมด ${foundCount} รูป 🎉`;
-
-    // ปุ่มแสดงรูปทั้งหมด (Reset)
-    const galleryHeader = document.querySelector('.gallery-header');
-    if (!document.getElementById('btnClearScan')) {
-      const btnClearScan = document.createElement('button');
-      btnClearScan.id = 'btnClearScan';
-      btnClearScan.innerText = '↺ แสดงรูปทั้งหมด';
-      btnClearScan.style.cssText = 'padding:10px 20px;margin-left:10px;background:#F3F4F6;border:1px solid #D1D5DB;border-radius:12px;font-family:"Prompt";cursor:pointer;font-weight:500;';
-      btnClearScan.addEventListener('click', () => {
-        allPhotos.forEach(w => w.style.display = 'block');
-        galleryTitle.innerText = oldTitle;
-        if(document.getElementById('btnClearScan')) galleryHeader.removeChild(btnClearScan);
-      });
-      galleryHeader.appendChild(btnClearScan);
-    }
-
-  } catch (error) {
-    console.error("AI Main Process Error:", error);
-    showStatusOverlay("❌ เกิดข้อผิดพลาด", "ระบบไม่สามารถประมวลผลข้อมูล AI ได้ในขณะนี้", false);
-  }
-});
-
-// เชื่อมปุ่มสแกนหน้า
-document.getElementById('btnScanFace').addEventListener('click', startCamera);
+// ผูกปุ่มสแกนหน้า
+const btnScanFace = document.getElementById('btnScanFace');
+if(btnScanFace) btnScanFace.addEventListener('click', startCamera);
 
 // =========================================
 // ฟังก์ชันพื้นฐานอื่นๆ
 // =========================================
-btnBack.addEventListener('click', () => {
-  galleryView.style.display = 'none'; dashboardView.style.display = 'block';
-  photoGrid.innerHTML = ''; currentFolderId = null; clearSelection();
-});
+if(btnBack) {
+  btnBack.addEventListener('click', () => {
+    if(galleryView && dashboardView) {
+      galleryView.style.display = 'none'; 
+      dashboardView.style.display = 'block';
+    }
+    if(photoGrid) photoGrid.innerHTML = ''; 
+    currentFolderId = null; 
+    clearSelection();
+  });
+}
 
 async function createNewFolder() {
+  if(!eventNameInput || !createBtn) return;
   const name = eventNameInput.value.trim();
-  if (name === '') { eventNameInput.classList.add('shake'); setTimeout(() => eventNameInput.classList.remove('shake'), 300); return; }
-  const originalBtnText = createBtn.innerHTML; createBtn.innerHTML = "⏳ สร้าง..."; createBtn.disabled = true;
+  if (name === '') { 
+    eventNameInput.classList.add('shake'); 
+    setTimeout(() => eventNameInput.classList.remove('shake'), 300); 
+    return; 
+  }
+  const originalBtnText = createBtn.innerHTML; 
+  createBtn.innerHTML = "⏳ สร้าง..."; 
+  createBtn.disabled = true;
   try {
     const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=create&name=${encodeURIComponent(name)}`);
-    if ((await response.json()).status === "success") { loadFoldersFromDrive(false); eventNameInput.value = ''; }
+    const resData = await response.json();
+    if (resData.status === "success") { 
+      loadFoldersFromDrive(false); 
+      eventNameInput.value = ''; 
+    }
   } catch (error) {
     console.error("สร้างโฟลเดอร์ไม่สำเร็จ:", error);
-  } finally { createBtn.innerHTML = originalBtnText; createBtn.disabled = false; }
-}
-createBtn.addEventListener('click', createNewFolder);
-eventNameInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') createNewFolder(); });
-cancelDeleteBtn.addEventListener('click', () => modal.classList.remove('show'));
-confirmDeleteBtn.addEventListener('click', async () => {
-  if (folderToDeleteId) {
-    confirmDeleteBtn.disabled = true;
-    try {
-      const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=delete&id=${folderToDeleteId}`);
-      if ((await response.json()).status === "success") {
-        modal.classList.remove('show'); folderToDeleteElement.classList.add('removing');
-        setTimeout(() => loadFoldersFromDrive(false), 400);
-      }
-    } catch (error) {
-      console.error("ลบโฟลเดอร์ไม่สำเร็จ:", error);
-    } finally { confirmDeleteBtn.disabled = false; }
+  } finally { 
+    createBtn.innerHTML = originalBtnText; 
+    createBtn.disabled = false; 
   }
-});
+}
 
-// เพิ่ม CSS Animation สำหรับ Spinner ตัวโหลดลงใน Head
+if(createBtn) createBtn.addEventListener('click', createNewFolder);
+if(eventNameInput) {
+  eventNameInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') createNewFolder(); });
+}
+if(cancelDeleteBtn) cancelDeleteBtn.addEventListener('click', () => modal.classList.remove('show'));
+
+if(confirmDeleteBtn) {
+  confirmDeleteBtn.addEventListener('click', async () => {
+    if (folderToDeleteId) {
+      confirmDeleteBtn.disabled = true;
+      try {
+        const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=delete&id=${folderToDeleteId}`);
+        const resData = await response.json();
+        if (resData.status === "success") {
+          modal.classList.remove('show'); 
+          if(folderToDeleteElement) folderToDeleteElement.classList.add('removing');
+          setTimeout(() => loadFoldersFromDrive(false), 400);
+        }
+      } catch (error) {
+        console.error("ลบโฟลเดอร์ไม่สำเร็จ:", error);
+      } finally { 
+        confirmDeleteBtn.disabled = false; 
+      }
+    }
+  });
+}
+
+// เพิ่มสไตล์แอนิเมชันวงกลมหมุนโหลดรูป
 const style = document.createElement('style');
-style.textContent = '@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }';
+style.textContent = '@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } } .shake { animation: shake 0.3s; } @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }';
 document.head.appendChild(style);

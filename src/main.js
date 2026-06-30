@@ -122,7 +122,7 @@ setInterval(() => {
 }, 1500); 
 
 // =========================================
-// 📸 ระบบแกลลอรี่ & ดูรูป & ดาวน์โหลด (แก้ไขรูปไม่ขึ้น)
+// 📸 ระบบแกลลอรี่ & ดูรูป & ดาวน์โหลด (แก้ไขเพื่อ GitHub Pages)
 // =========================================
 async function openGallery(folderId, folderName, isSilentRefresh = false) {
   if (!isSilentRefresh) {
@@ -157,11 +157,12 @@ async function openGallery(folderId, folderName, isSilentRefresh = false) {
         wrapper.className = 'photo-wrapper' + (selectedPhotos.has(img.id) ? ' selected' : '');
         wrapper.id = `img-wrapper-${index}`; 
 
+        // ⭐️ จุดสำคัญ: ปรับโครงสร้างลิงก์สำหรับแสดงผล และลิงก์สำหรับดาวน์โหลดแยกกัน
+        const displayUrl = `https://drive.google.com/uc?export=view&id=${img.id}`;
         const downloadUrl = `https://drive.google.com/uc?export=download&id=${img.id}`;
         
-        // ✨ ยิงลิงก์ตรง img.url เข้าแท็ก src โดยตรง และเก็บข้อมูล ID ไว้ที่ data-id สำหรับใช้งาน AI
         wrapper.innerHTML = `
-          <img src="${img.url}" loading="lazy" data-id="${img.id}" style="width: 100%; height: 100%; object-fit: cover;">
+          <img src="${displayUrl}" loading="lazy" data-id="${img.id}" style="width: 100%; height: 100%; object-fit: cover;">
           <div class="check-circle"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg></div>
         `;
 
@@ -169,7 +170,7 @@ async function openGallery(folderId, folderName, isSilentRefresh = false) {
           if (selectedPhotos.size > 0 || e.target.closest('.check-circle')) {
             toggleSelectPhoto(wrapper, img.id);
           } else {
-            openLightbox(img.url, downloadUrl);
+            openLightbox(displayUrl, downloadUrl);
           }
         });
 
